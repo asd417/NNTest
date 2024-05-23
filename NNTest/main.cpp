@@ -34,33 +34,39 @@ float error(float expectedOutput, float output) {
 }
 
 //Calculates new w for p+1
-void Wp1(float& w, float learningRate, float error, float& x) {
+void Wp1(double& w, double learningRate, double error, double& x) {
 	w = w + learningRate * x * error;
 }
 
 //Calculates new w for p+1
-float Wp1_f(float& w, float learningRate, float error, float& x) {
+double Wp1_f(double& w, double& learningRate, double& error, double& x) {
+	//std::cout << "\tw: " + std::to_string(w) + " lR: " + std::to_string(learningRate) + " E: " + std::to_string(error) + " x: " + std::to_string(x) + "\n";
+	//std::cout << "Delta w: " + std::to_string(learningRate * x * error) + "\n";
+#ifdef PRINT
+#endif
 	return w + learningRate * x * error;
 }
 
-#define MAX_EPOCH 1000
+#define MAX_EPOCH 1000000
 #define DATA_COUNT 4
 #define ITER_COUNT 4
-
+//#define PRINT
 
 #define PER_LAYER_WEIGHTCOUNT 2
 #define NODECOUNT 3
 
-float initializer(float inputCount) {
-	return (4.8 * (float(std::rand()) / float(RAND_MAX)) - 2.4) / inputCount;
+double initializer(double inputCount) {
+	return (4.8 * (double(std::rand()) / double(RAND_MAX)) - 2.4) / inputCount;
 }
 
-void printNetwork(std::array<std::array<float, PER_LAYER_WEIGHTCOUNT>, NODECOUNT>& weights, std::array<float, NODECOUNT>& thresholds) {
+void printNetwork(std::array<std::array<double, PER_LAYER_WEIGHTCOUNT>, NODECOUNT>& weights, std::array<double, NODECOUNT>& thresholds) {
+
 	int nodeI = 0;
-	for (std::array<float, PER_LAYER_WEIGHTCOUNT>& weightCol : weights) {
+	for (std::array<double, PER_LAYER_WEIGHTCOUNT>& weightCol : weights) {
+
 		std::cout << " Node" + std::to_string(nodeI) + "   ";
 		int weightI = 0;
-		for (float& w : weightCol) {
+		for (double& w : weightCol) {
 			std::cout << " W" + std::to_string(weightI) + ": " + std::to_string(w);
 
 			weightI++;
@@ -72,7 +78,7 @@ void printNetwork(std::array<std::array<float, PER_LAYER_WEIGHTCOUNT>, NODECOUNT
 
 //Multi-layer NN with back-propagation
 // PER_LAYER_WEIGHTCOUNT != 2 will break this code
-void multiLayered(std::array<std::tuple<float, float, float>, DATA_COUNT>& data, float learningRate, float threshold) {
+void multiLayered(std::array<std::tuple<float, float, float>, DATA_COUNT>& data, double learningRate) {
 	std::srand(std::time(NULL));
 	constexpr float inputCount = 2.0f;
 
@@ -85,38 +91,39 @@ void multiLayered(std::array<std::tuple<float, float, float>, DATA_COUNT>& data,
 	/// hidden node	2 wT:	w[1][0] w[1][1]
 	/// output node	  wT:	w[2][0] w[2][1]
 	/// wT means weights and Thresholds
-	std::array<std::array<float, PER_LAYER_WEIGHTCOUNT>, NODECOUNT> weights;
-	std::array<float, 3> thresholds;
+	std::array<std::array<double, PER_LAYER_WEIGHTCOUNT>, NODECOUNT> weights;
+	std::array<double, 3> thresholds;
 	// Per-node Yp values
 	// y[2] is the output
-	std::array<float, 3> y;
+	std::array<double, 3> y;
 
 	// Randomly initialize all the weights.
 	// Does Neuron by Neuron mean weights in same node should be initialized as same values?
-	for (std::array<float, PER_LAYER_WEIGHTCOUNT>& weightCol : weights) {
-		for (float& w : weightCol) {
+	for (std::array<double, PER_LAYER_WEIGHTCOUNT>& weightCol : weights) {
+		for (double& w : weightCol) {
 			w = initializer(inputCount);
 		}
 	}
 	//Randomly initialize all the thresholds
-	for (float& threshold : thresholds) {
+	for (double& threshold : thresholds) {
 		threshold = initializer(inputCount);
 	}
-	float x1;
-	float x2;
-	float expected;
+	double x1;
+	double x2;
+	double expected;
 
 	int p = 0;
 	int dI = 0;
 
 	bool hasError = true;
-	while (hasError && p < MAX_EPOCH)
+	while (hasError)
 	{
-		hasError = false;
+		double errorSqSum = 0;
+		//learningRate = learningRate * 0.8f;
+#ifdef PRINT
 		std::cout << "EPOCH " + std::to_string(p) + ":\n";
-
 		printNetwork(weights, thresholds);
-
+#endif
 		while (dI < DATA_COUNT) {
 			x1 = std::get<0>(data[dI]);
 			x2 = std::get<1>(data[dI]);
@@ -126,34 +133,46 @@ void multiLayered(std::array<std::tuple<float, float, float>, DATA_COUNT>& data,
 			// terrible code
 			//This is why PER_LAYER_WEIGHTCOUNT can not be changed
 			for (int i = 0; i < 2;i++) {
-				float w1 = weights[i][0];
-				float w2 = weights[i][1];
-				float threshold = thresholds[i];
+				double w1 = weights[i][0];
+				double w2 = weights[i][1];
+				double threshold = thresholds[i];
 
 				//TODO: rewrite Yp() to accept variable number of inputs/weight pairs
 				y[i] = Yp(sigmoid, x1, x2, w1, w2, threshold);
 			}
 			// output layer operation
 			{
-				float w1 = weights[2][0];
-				float w2 = weights[2][1];
-				float threshold = thresholds[2];
+				double w1 = weights[2][0];
+				double w2 = weights[2][1];
+				double threshold = thresholds[2];
 				y[2] = Yp(sigmoid, y[0], y[1], w1, w2, threshold);
 			}
 
-			float output = y[2];
-			float error = expected - output;
+			double output = y[2];
+
+			double error = expected - output;
+#ifdef PRINT
 			std::cout << "\t I1: " + std::to_string(x1) + " I2 " + std::to_string(x2) + " O:" + std::to_string(output) + " E: " + std::to_string(error) + "\n";
-			hasError = error != 0.0f;
-			float eG = errorGradient(y[2], error);
+#endif
+			//hasError = abs(error) > 0.01f;
+			errorSqSum += abs(error) * abs(error);
+			double eG = errorGradient(y[2], error);
+			//threshold error adjustment
+			thresholds[2] = thresholds[2] + (-1) * learningRate * eG;
+			
+#ifdef PRINT
+#endif
 			weights[2][0] = Wp1_f(weights[2][0], learningRate, eG, y[0]);
 			weights[2][1] = Wp1_f(weights[2][1], learningRate, eG, y[1]);
 
 			//hidden layer error gradient
 			// sum of (error gradient of each node in next layer * weights of each node in next layer)
-			float eGH0 = y[0] * (1 - y[0]) * (eG * weights[2][0]);
-			float eGH1 = y[1] * (1 - y[1]) * (eG * weights[2][1]);
+			double eGH0 = y[0] * (1 - y[0]) * (eG * weights[2][0]);
+			double eGH1 = y[1] * (1 - y[1]) * (eG * weights[2][1]);
 			//Error gradient is same as the error from the perceptron
+
+			thresholds[0] = thresholds[0] + (-1) * learningRate * eGH0;
+			thresholds[1] = thresholds[1] + (-1) * learningRate * eGH1;
 			
 			//Node 0 weight updates
 			weights[0][0] = Wp1_f(weights[0][0], learningRate, eGH0, x1);
@@ -165,24 +184,53 @@ void multiLayered(std::array<std::tuple<float, float, float>, DATA_COUNT>& data,
 			//End of single training. increment to next data
 			dI++;
 		}
+		std::cout << "EPOCH " + std::to_string(p) + " ErrorSquared: " + std::to_string(errorSqSum) + "\n";
+		if (errorSqSum < 0.001f) hasError = false;
 		dI = 0;
 		p++;
 	}
 	if (p >= MAX_EPOCH) std::cout << "Failed after " + std::to_string(MAX_EPOCH) + " iterations... Adjust learningRate and threshold\n";
 	std::cout << "Final result:\n";
 	printNetwork(weights, thresholds);
+	std::cout << "Output Test:\n";
+
+	{
+		for(std::tuple<float, float, float> f : data){
+			x1 = std::get<0>(f);
+			x2 = std::get<1>(f);
+			expected = std::get<2>(f);
+			for (int i = 0; i < 2; i++) {
+				double w1 = weights[i][0];
+				double w2 = weights[i][1];
+				double threshold = thresholds[i];
+
+				//TODO: rewrite Yp() to accept variable number of inputs/weight pairs
+				y[i] = Yp(sigmoid, x1, x2, w1, w2, threshold);
+			}
+			// output layer operation
+			{
+				double w1 = weights[2][0];
+				double w2 = weights[2][1];
+				double threshold = thresholds[2];
+				y[2] = Yp(sigmoid, y[0], y[1], w1, w2, threshold);
+			}
+			double output = y[2];
+			std::cout << "x1: " + std::to_string((int)x1) + " x2: " + std::to_string((int)x2) + " expected: " + std::to_string((int)expected) + "\n";
+		}
+	}
+
 }
 
 //perceptron
 void perceptron(std::array<std::tuple<float, float, float>, DATA_COUNT>& data, float (*func)(float), float learningRate, float threshold) {
 	std::srand(std::time(NULL));
 
-	float x1;
-	float x2;
-	float expected;
+	double x1;
+	double x2;
+	double expected;
 
-	float w1 = 0.5f;
-	float w2 = 0.5f;
+	double w1 = 0.5f;
+	double w2 = 0.5f;
 
 	int p = 0;
 	int dI = 0;
@@ -221,17 +269,22 @@ void perceptron(std::array<std::tuple<float, float, float>, DATA_COUNT>& data, f
 int main() {
 	//Data Set for AND
 	std::array<std::tuple<float, float, float>, DATA_COUNT> ANDdata = {
-		std::tuple<float, float, float>(0.0f,0.0f,0.0f),
-		std::tuple<float, float, float>(0.0f,1.0f,0.0f),
-		std::tuple<float, float, float>(1.0f,0.0f,0.0f),
-		std::tuple<float, float, float>(1.0f,1.0f,1.0f),
+		std::tuple<int, int, int>(0.0f,0.0f,0.0f),
+		std::tuple<int, int, int>(0.0f,1.0f,0.0f),
+		std::tuple<int, int, int>(1.0f,0.0f,0.0f),
+		std::tuple<int, int, int>(1.0f,1.0f,1.0f)
 	};
 
-	std::array<std::tuple<float, float, float>, DATA_COUNT> XORdata = {};
+	std::array<std::tuple<float, float, float>, DATA_COUNT> XORdata = {
+		std::tuple<int, int, int>(0.0f,0.0f,0.0f),
+		std::tuple<int, int, int>(0.0f,1.0f,1.0f),
+		std::tuple<int, int, int>(1.0f,0.0f,1.0f),
+		std::tuple<int, int, int>(1.0f,1.0f,0.0f),
+	};
 	//Sign function learning seems to loop weights between same values. Try applying apative learning rate
 	//std::cout << "Sign Func\n";
 	//perceptron(ANDdata, signFunc, 0.0001f, 0.2f);
 	//std::cout << "Step Func\n";
 	//perceptron(ANDdata, stepFunc, 0.1f, 0.2f);
-	multiLayered(ANDdata, 0.001f, 0.02f);
+	multiLayered(XORdata, 0.1f);
 }
